@@ -66,7 +66,10 @@ export function runErc(
     for (const sym of symbols) {
         const def = symbolMap.get(sym.symbolRef);
         if (!def) continue;
+        const ncSet = sym.noConnectPinIds ? new Set(sym.noConnectPinIds) : null;
         for (const pin of def.pins) {
+            // Skip pins marked as intentional No-Connect
+            if (ncSet && ncSet.has(pin.id)) continue;
             const key = `${sym.id}::${pin.id}`;
             if (!connectedPins.has(key)) {
                 violations.push(

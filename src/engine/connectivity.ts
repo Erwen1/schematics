@@ -338,7 +338,7 @@ export function computeNets(
                 const sym = symbols.find((s) => s.id === pr.symbolId);
                 if (sym) {
                     const def = symbolMap.get(sym.symbolRef);
-                    if (def && (def.name === 'VCC' || def.name === 'GND')) {
+                    if (def && (def.name === 'VCC' || def.name === 'GND') && !def.metadata?.isPowerFlag) {
                         netName = def.name;
                         break;
                     }

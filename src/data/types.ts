@@ -75,6 +75,8 @@ export interface SymbolInstance {
         value: string;     // "10k", "100nF"
         [key: string]: string;
     };
+    /** Pin IDs marked as intentionally No-Connect (suppresses ERC unconnected warnings) */
+    noConnectPinIds?: string[];
 }
 
 // ── Wire ────────────────────────────────────

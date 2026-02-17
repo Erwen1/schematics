@@ -144,6 +144,29 @@ export const builtInSymbols: SymbolDef[] = [
         metadata: { category: 'power', isPowerSource: true }
     },
 
+    // ── PWR_FLAG (Generic Power Flag) ─────────
+    {
+        id: 'sym_pwr_flag',
+        name: 'PWR_FLAG',
+        category: 'Power',
+        description: 'Power flag — marks a net as having a power source without forcing a net name',
+        width: G * 2,
+        height: G * 2,
+        showValue: false,
+        pins: [
+            { id: 'p1', name: '1', x: G, y: G * 2, orientation: 'down', electricalType: 'power_out' },
+        ],
+        graphics: [
+            // vertical line
+            { type: 'line', x1: G, y1: G * 2, x2: G, y2: G * 0.6 },
+            // diamond
+            { type: 'polyline', points: [G, G * 0.1, G * 1.4, G * 0.6, G, G * 1.1, G * 0.6, G * 0.6, G, G * 0.1] },
+            // label
+            { type: 'text', x: G, y: -2, text: 'PWR', fontSize: 10, align: 'center' },
+        ],
+        metadata: { category: 'power', isPowerSource: true, isPowerFlag: true }
+    },
+
     // ── GND (Ground) ──────────────────────────
     {
         id: 'sym_gnd',

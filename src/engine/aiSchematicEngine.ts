@@ -138,6 +138,8 @@ interface CircuitTemplate {
     description: string;
     symbols: Array<{ ref: string, sym: string, x: number, y: number }>;
     wires: Array<{ from: [string, string], to: [string, string], net: string }>;
+    /** Pins intentionally left unconnected — suppresses ERC Rule 1 warnings */
+    noConnectPins?: Array<{ ref: string, pins: string[] }>;
 }
 
 const TEMPLATES: Record<string, CircuitTemplate> = {
@@ -148,19 +150,25 @@ const TEMPLATES: Record<string, CircuitTemplate> = {
             { ref: 'U1', sym: 'sym_esp32', x: 400, y: 300 },
             { ref: 'U2', sym: 'sym_bme280', x: 900, y: 300 }, // Standardized 500px gap
             { ref: 'REG1', sym: 'sym_lm1117', x: -100, y: 300 },
-            { ref: 'R_PU1', sym: 'sym_resistor', x: 650, y: 100 },
-            { ref: 'R_PU2', sym: 'sym_resistor', x: 750, y: 100 },
-            { ref: 'C_DEC1', sym: 'sym_capacitor', x: 300, y: 200 },
-            { ref: 'C_DEC2', sym: 'sym_capacitor', x: 800, y: 200 },
+            { ref: 'R_PU1', sym: 'sym_resistor', x: 620, y: 50 },
+            { ref: 'R_PU2', sym: 'sym_resistor', x: 720, y: 50 },
+            { ref: 'C_DEC1', sym: 'sym_capacitor', x: 200, y: 100 },
+            { ref: 'C_DEC2', sym: 'sym_capacitor', x: 1050, y: 200 },
+            { ref: 'C_IN', sym: 'sym_capacitor', x: -250, y: 200 },
+            { ref: 'PWR_GND', sym: 'sym_gnd', x: 380, y: 600 },
+            { ref: 'PWR_VIN', sym: 'sym_pwr_flag', x: -300, y: 100 },
         ],
         wires: [
             { from: ['REG1', 'out'], to: ['U1', '3v3'], net: '3V3' },
+            { from: ['PWR_VIN', 'p1'], to: ['C_IN', 'p1'], net: 'VIN' },
+            { from: ['REG1', 'in'], to: ['C_IN', 'p1'], net: 'VIN' },
+            { from: ['C_IN', 'p2'], to: ['REG1', 'gnd'], net: 'GND' },
             { from: ['U1', '3v3'], to: ['C_DEC1', 'p1'], net: '3V3' },
             { from: ['C_DEC1', 'p2'], to: ['U1', 'gnd'], net: 'GND' },
             { from: ['U1', '3v3'], to: ['U2', 'vcc'], net: '3V3' },
             { from: ['U2', 'vcc'], to: ['C_DEC2', 'p1'], net: '3V3' },
             { from: ['C_DEC2', 'p2'], to: ['U2', 'gnd'], net: 'GND' },
-            { from: ['U2', 'vcc'], to: ['R_PU1', 'p1'], net: '3V3' },
+            { from: ['U1', '3v3'], to: ['R_PU1', 'p1'], net: '3V3' },
             { from: ['R_PU1', 'p1'], to: ['R_PU2', 'p1'], net: '3V3' },
             { from: ['U1', 'gpio21'], to: ['U2', 'sda'], net: 'SDA' },
             { from: ['U1', 'gpio22'], to: ['U2', 'scl'], net: 'SCL' },
@@ -168,6 +176,11 @@ const TEMPLATES: Record<string, CircuitTemplate> = {
             { from: ['R_PU2', 'p2'], to: ['U2', 'scl'], net: 'SCL' },
             { from: ['REG1', 'gnd'], to: ['U1', 'gnd'], net: 'GND' },
             { from: ['U1', 'gnd'], to: ['U2', 'gnd'], net: 'GND' },
+            { from: ['PWR_GND', 'p1'], to: ['U1', 'gnd'], net: 'GND' },
+        ],
+        noConnectPins: [
+            { ref: 'U1', pins: ['en', 'gpio34', 'gpio35', 'gpio32', 'gpio33', 'gpio25', 'gpio26', 'gpio27', 'gpio14', 'gpio12', 'gpio19', 'gpio23', 'gpio18', 'gpio5', 'tx0', 'rx0'] },
+            { ref: 'U2', pins: ['csb', 'sdo'] },
         ]
     },
     'dual-voltage': {
@@ -478,10 +491,18 @@ function applyTemplate(
     offsetY: number
 ) {
     const idMap = new Map<string, string>();
+    // Build a quick lookup for no-connect pins per ref
+    const ncMap = new Map<string, string[]>();
+    if (template.noConnectPins) {
+        for (const nc of template.noConnectPins) {
+            ncMap.set(nc.ref.trim(), nc.pins);
+        }
+    }
     template.symbols.forEach(s => {
         const id = uuid();
-        idMap.set(s.ref.trim(), id);
-        symbols.push({
+        const ref = s.ref.trim();
+        idMap.set(ref, id);
+        const inst: SymbolInstance = {
             id,
             symbolRef: s.sym,
             x: s.x + offsetX,
@@ -489,7 +510,12 @@ function applyTemplate(
             rotation: 0,
             mirrored: false,
             properties: { reference: s.ref, value: '' }
-        });
+        };
+        const ncPins = ncMap.get(ref);
+        if (ncPins && ncPins.length > 0) {
+            inst.noConnectPinIds = ncPins;
+        }
+        symbols.push(inst);
     });
 
     template.wires.forEach(w => {
